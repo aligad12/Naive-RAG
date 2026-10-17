@@ -9,3 +9,5 @@ chromadb
 pypdf
 python-dotenv
 streamlit
+torch
+torchvision
