@@ -24,11 +24,13 @@ Question: {question}
 Answer:"""
 )
 
-llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)  # check Groq's docs for current model names
+llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)  # check Groq's docs for current model names
 chain = prompt | llm | StrOutputParser()
 
+TOP_K = 4
+
 def ask(question: str):
-    docs = retriever.invoke(question)                      # 1. retrieve
-    context = "\n\n".join(d.page_content for d in docs)    # 2. stuff into prompt
+    results = db.similarity_search_with_score(question, k=TOP_K)   # 1. retrieve
+    context = "\n\n".join(doc.page_content for doc, _ in results)  # 2. stuff into prompt
     answer = chain.invoke({"context": context, "question": question})  # 3. generate
-    return answer, docs
+    return answer, results   # results = list of (Document, distance)
