@@ -13,3 +13,7 @@ def build_index():
     chunks = split_docs(load_cv())
     Chroma.from_documents(chunks, get_embeddings(), persist_directory = DB_DIR)
     print(f"indexd {len(chunks)} chunks")
+
+
+if __name__ == "__main__":
+    build_index()
