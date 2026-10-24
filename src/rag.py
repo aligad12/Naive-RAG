@@ -5,6 +5,8 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from src.ingest import get_embeddings, DB_DIR
+from src.query_transfrom import generate_queries
+from src.rerank import rerank
 
 load_dotenv()  # reads GROQ_API_KEY from .env
 
@@ -28,9 +30,36 @@ llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)  # check Groq's docs 
 chain = prompt | llm | StrOutputParser()
 
 TOP_K = 4
+CANDIDATES_PER_QUERY = 6
+
+def naive_retrieve(question: str):
+    """The original retrieval (plain top-k similarity). Kept as a baseline for src/compare.py."""
+    return db.similarity_search_with_score(question, k=TOP_K)
+
+def retrieve(question: str):
+    """Multi-Query (pre-retrieval) -> vector search -> cross-encoder rerank (post-retrieval)."""
+    # PRE-RETRIEVAL: original question + LLM-written variants
+    queries = generate_queries(question, llm)
+
+    # search with every query, merge into one pool without duplicates
+    pool = {}
+    for q in queries:
+        for doc, dist in db.similarity_search_with_score(q, k=CANDIDATES_PER_QUERY):
+            key = (doc.metadata.get("page"), doc.page_content)
+            if key not in pool or dist < pool[key][1]:
+                pool[key] = (doc, dist)
+
+    candidates = []
+    for doc, dist in pool.values():
+        doc.metadata["distance"] = dist  # keep the vector distance so the UI can show it
+        candidates.append(doc)
+
+    # POST-RETRIEVAL: rerank against the ORIGINAL question and keep the best TOP_K
+    results = rerank(question, candidates, top_n=TOP_K)
+    return results, {"queries": queries, "candidates": len(candidates)}
 
 def ask(question: str):
-    results = db.similarity_search_with_score(question, k=TOP_K)   # 1. retrieve
+    results,info = retrieve(question)   # 1. retrieve
     context = "\n\n".join(doc.page_content for doc, _ in results)  # 2. stuff into prompt
     answer = chain.invoke({"context": context, "question": question})  # 3. generate
-    return answer, results   # results = list of (Document, distance)
+    return answer, results,info   # results = list of (Document, distance)

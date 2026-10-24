@@ -103,22 +103,33 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
+def render_queries(info):
+    queries = info["queries"]
+    with st.expander(
+        f"Pre-retrieval: {len(queries)} queries searched, {info['candidates']} candidate chunks"
+    ):
+        for i, q in enumerate(queries):
+            tag = "original" if i == 0 else f"variant {i}"
+            st.markdown(f"- **{tag}:** {q}")
+
+
 def render_sources(results):
-    with st.expander(f"Sources: {len(results)} chunks retrieved"):
+    with st.expander(f"Post-retrieval: top {len(results)} chunks after reranking"):
         if not results:
             st.warning("No chunks were retrieved.")
-        for i, (doc, dist) in enumerate(results, 1):
+        for i, (doc, score) in enumerate(results, 1):
             page = doc.metadata.get("page", 0) + 1
+            dist = doc.metadata.get("distance")
+            dist_txt = f" · vector distance {dist:.3f}" if dist is not None else ""
             color = COLORS[(i - 1) % len(COLORS)]
             body = html.escape(doc.page_content).replace("\n", "<br>")
             st.markdown(
                 f"<div class='src' style='--c:{color}'>"
                 f"<div class='src-head'><span class='badge'>Chunk {i}</span>"
-                f"<span class='meta'>page {page} · distance {dist:.3f} (lower = closer)</span></div>"
+                f"<span class='meta'>page {page} · rerank score {score:.3f} (higher = better){dist_txt}</span></div>"
                 f"<div class='src-body'>{body}</div></div>",
                 unsafe_allow_html=True,
             )
-
 
 # ---------- sidebar ----------
 with st.sidebar:
@@ -134,7 +145,8 @@ with st.sidebar:
     st.markdown("### ⚙️ Pipeline")
     st.caption(
         f"**Embeddings:** all-MiniLM-L6-v2\n\n**Vector store:** Chroma\n\n"
-        f"**Retrieval:** top-{TOP_K} similarity\n\n**LLM:** Groq"
+        f"**Pre-retrieval:** Multi-Query (LLM rewrites)\n\n"
+        f"**Post-retrieval:** cross-encoder rerank, top-{TOP_K}\n\n**LLM:** Groq"
     )
 
 # ---------- hero ----------
@@ -142,7 +154,8 @@ st.markdown(
     "<div class='hero'><h1>📄 Ask my CV</h1>"
     "<p>Answers come only from the CV. If something isn't in it, the app says so.</p>"
     "<div class='chips'><span class='chip'>Retrieval-Augmented Generation</span>"
-    "<span class='chip'>Chroma</span><span class='chip'>LangChain</span></div></div>",
+    "<span class='chip'>Chroma</span><span class='chip'>LangChain</span>"
+    "<span class='chip'>Multi-Query</span><span class='chip'>Reranking</span></div></div>",
     unsafe_allow_html=True,
 )
 
@@ -151,6 +164,8 @@ for msg in st.session_state.messages:
     avatar = "🧑‍💻" if msg["role"] == "user" else "📄"
     with st.chat_message(msg["role"], avatar=avatar):
         st.write(msg["content"])
+        if msg.get("info") is not None:
+            render_queries(msg["info"])
         if msg.get("sources") is not None:
             render_sources(msg["sources"])
 
@@ -166,11 +181,12 @@ if question:
     with st.chat_message("assistant", avatar="📄"):
         try:
             with st.spinner("Searching the CV..."):
-                answer, results = ask(question)
+                answer, results, info = ask(question)
             st.write(answer)
+            render_queries(info)
             render_sources(results)
             st.session_state.messages.append(
-                {"role": "assistant", "content": answer, "sources": results}
+                {"role": "assistant", "content": answer, "sources": results, "info": info}
             )
         except Exception as e:
             st.error(
