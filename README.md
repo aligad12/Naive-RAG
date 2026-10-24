@@ -15,7 +15,7 @@
 
 A Retrieval-Augmented Generation (RAG) app that answers questions about my CV. Answers are generated only from retrieved CV content, and when the CV doesn't contain the answer, the app says so instead of inventing one.
 
-![App screenshot](docs/screenshot.png)
+![App screenshot](docs/new_interface.png)
 
 ## 🔴 Features
 
