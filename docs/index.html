@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask My CV: RAG with Multi-Query and Reranking</title>
+<style>
+:root{--red:#E10600;--red2:#C1121F;--bg:#0A0A0B;--card:#141416;--line:#2A2A2E;--tx:#F2F2F3;--mut:#9A9AA0;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#2A0508 0,#0A0A0B 55%) fixed;color:var(--tx);font:16px/1.65 "Segoe UI",system-ui,Helvetica,Arial,sans-serif}
+main{max-width:980px;margin:0 auto;padding:0 20px 60px}
+nav{position:sticky;top:0;z-index:5;background:rgba(10,10,11,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav div{max-width:980px;margin:0 auto;padding:10px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+nav b{color:var(--red);margin-right:auto}nav a{color:var(--tx);text-decoration:none;font-size:14px;font-weight:600}nav a:hover{color:var(--red)}
+.hero{margin:28px 0;padding:42px 36px;border-radius:22px;border-bottom:4px solid var(--red);background:linear-gradient(120deg,#C1121F,#5A0A10 50%,#141416);box-shadow:0 12px 40px rgba(225,6,0,.28)}
+h1{font-size:clamp(2rem,6vw,3.2rem);margin:0 0 8px;letter-spacing:-.02em}.hero p{color:#F5D6D6;font-size:1.15rem;margin:0 0 16px}
+.chip{display:inline-block;margin:0 8px 8px 0;padding:4px 14px;border-radius:99px;font-size:14px;font-weight:700;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.22)}
+h2{margin:48px 0 6px;font-size:1.7rem}h2:before{content:"";display:inline-block;width:6px;height:1.1em;background:var(--red);border-radius:3px;margin-right:12px;vertical-align:-.15em}
+.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+button{font:inherit;cursor:pointer;color:var(--tx)}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.step{background:#1B1B1F;border:1px solid #3A3A40;border-left:4px solid var(--red);border-radius:12px;padding:8px 14px;font-weight:600;font-size:14px}
+.step:hover,.step.on{background:var(--red);border-color:var(--red);color:#fff}
+.play{background:transparent;border:1px solid var(--red);color:#FF6B61;border-radius:99px;padding:6px 16px;font-weight:700}
+.play:hover{background:var(--red);color:#fff}
+#panel h3{margin:0 0 4px}#panel code,.file{color:#FF6B61;font-family:Consolas,monospace;font-size:.92em}
+.why{border-left:3px solid var(--red);padding-left:12px;color:#E6E6E8;margin-top:10px}
+input[type=range]{width:100%;accent-color:var(--red)}
+.cells{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin:14px 0 8px}
+.cells i{height:34px;border-radius:6px;background:#1B1B1F;border:1px solid var(--line)}
+.cells i.c{background:#5A0A10;border-color:#8E1B1B}.cells i.k{background:var(--red);border-color:var(--red)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tab{background:#1B1B1F;border:1px solid var(--line);border-radius:10px 10px 0 0;padding:8px 16px;font-weight:700}
+.tab.on{background:var(--red);border-color:var(--red);color:#fff}
+pre{margin:0;background:#0F0F11;border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;font:14px/1.6 Consolas,monospace;color:#E6E6E8}
+.code{position:relative}.copy{position:absolute;top:8px;right:8px;background:#1B1B1F;border:1px solid #3A3A40;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700}
+.copy:hover{background:var(--red);border-color:var(--red)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.grid h3{margin:0 0 6px;color:#FF6B61}.grid li{margin-bottom:6px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:700;color:#FF6B61}details p{margin:8px 0 0}
+a.btn{display:inline-block;background:var(--red);color:#fff;text-decoration:none;font-weight:700;border-radius:99px;padding:8px 20px;margin-top:6px}
+footer{color:var(--mut);text-align:center;margin-top:50px;font-size:14px}
+</style></head><body>
+<nav><div><b>Ask My CV</b><a href="#how">How it works</a><a href="#numbers">Try the numbers</a><a href="#why">Why these two</a><a href="#start">Quick start</a><a href="#faq">FAQ</a></div></nav>
+<main>
+<section class="hero"><h1>Ask My CV</h1><p>A RAG app that answers only from my CV, upgraded with Multi-Query expansion and cross-encoder reranking.</p>
+<span class="chip">Multi-Query</span><span class="chip">Cross-encoder rerank</span><span class="chip">Chroma</span><span class="chip">LangChain</span><span class="chip">Groq</span><span class="chip">Streamlit</span></section>
+
+<h2 id="how">How it works</h2><p class="sub">Click a step, or press play to walk through one question.</p>
+<div class="card"><div class="steps" id="steps"></div><div id="panel"></div><p><button class="play" id="play">&#9654; Play</button></p></div>
+
+<h2 id="numbers">Try the numbers</h2><p class="sub">How many chunks reach the reranker? Illustration only, not real retrieval data.</p>
+<div class="card"><label for="nq"><b>Queries searched: <span id="nqv">4</span></b> (1 = the original question only)</label>
+<input type="range" id="nq" min="1" max="4" value="4"><div class="cells" id="cells"></div><p id="ntxt" style="margin:0"></p></div>
+
+<h2 id="why">Why these two techniques</h2><p class="sub">The CV is terse and keyword-style; questions are conversational.</p>
+<div class="grid">
+<div class="card"><h3>Pre-retrieval: Multi-Query</h3><ul><li>The LLM rewrites the question in CV vocabulary, e.g. "expected graduation year, GPA".</li><li>Broad questions fan out across several chunks.</li><li>Not HyDE: a fake CV passage could inject invented details.</li><li>Self-Query and routing do not apply: the only metadata is the page number.</li><li>The original question is always kept, and the app falls back to it if the LLM call fails.</li></ul></div>
+<div class="card"><h3>Post-retrieval: cross-encoder rerank</h3><ul><li>Multi-Query raises recall but adds noise; the reranker restores precision.</li><li>It reads question and chunk together, which judges relevance better than comparing two separate embeddings.</li><li>Local and free, unlike a hosted reranker such as Cohere.</li><li>Not contextual compression: that costs one LLM call per chunk and can drop numbers a CV depends on.</li><li>It scores against the original question, so rewrites cannot drift the result.</li></ul></div></div>
+
+<h2 id="start">Quick start</h2><p class="sub">Create a free Groq key at console.groq.com/keys and put it in <code>.env</code>.</p>
+<div class="tabs"><button class="tab on" data-os="win">Windows</button><button class="tab" data-os="nix">macOS / Linux</button></div>
+<div class="code"><button class="copy" id="copy">Copy</button><pre id="cmd"></pre></div>
+<p class="sub" style="margin-top:12px">The first question is slower: the reranker model (about 90 MB) downloads once.</p>
+
+<h2 id="faq">FAQ</h2>
+<details><summary>Model not found (404)</summary><p>Hosted model names get retired. Check console.groq.com/docs/models and update the model name in <code>src/rag.py</code>. It is used for answering and for Multi-Query.</p></details>
+<details><summary>"[multi-query] LLM call failed" in the terminal</summary><p>Usually a rate limit or a retired model. The app keeps working with the original question only, and reranking still applies.</p></details>
+<details><summary>Empty or irrelevant answers</summary><p>Run <code>python -m src.ingest</code> again and confirm it reports more than 0 chunks (12 for the included CV).</p></details>
+<details><summary>How do I compare naive and improved retrieval?</summary><p>Run <code>python -m src.compare</code>. It prints both top-4 lists side by side for several questions.</p></details>
+<details><summary>Can I use my own CV?</summary><p>Replace <code>data/cv.pdf</code> and run <code>python -m src.ingest</code> again.</p></details>
+<footer>Ask My CV &middot; Python, LangChain, Chroma, Groq, Streamlit</footer>
+</main>
+<script>
+const STEPS=[
+["Question","app.py","The user types a question, e.g. \"When will he graduate?\". It is kept untouched for later steps.","The original wording is always searched and is the only text the reranker scores against."],
+["Multi-Query","src/query_transform.py","The LLM writes 3 alternative queries in CV vocabulary, such as \"expected graduation year degree\".","One embedding of a conversational question can land near the wrong chunk. Several rewrites give several chances."],
+["Vector search","src/rag.py","Every query is searched in Chroma and returns 6 chunks (all-MiniLM-L6-v2 embeddings).","Local embeddings: no embedding API key needed."],
+["Merge","src/rag.py","Results from all queries are merged into one pool; duplicates are removed, keeping the smallest vector distance.","This pool is the recall boost, but it also contains noise."],
+["Rerank","src/rerank.py","A cross-encoder scores each candidate against the original question and keeps the best 4.","Reading question and chunk together judges relevance better than separate embeddings, and it is cheap on a small pool."],
+["Answer","src/rag.py","The 4 chunks go into a prompt that allows only the provided context. If the answer is missing, the model says it could not find it.","The UI shows the queries, the chunks, the rerank score and the vector distance for every answer."]];
+let cur=0,timer=null;const $=s=>document.querySelector(s);
+const bar=$("#steps");
+STEPS.forEach((s,i)=>{const b=document.createElement("button");b.className="step";b.textContent=(i+1)+". "+s[0];b.onclick=()=>{stop();show(i)};bar.appendChild(b)});
+function show(i){cur=i;[...bar.children].forEach((b,j)=>b.classList.toggle("on",j===i));const s=STEPS[i];
+$("#panel").innerHTML="<h3></h3><span class='file'></span><p></p><div class='why'></div>";
+const p=$("#panel");p.querySelector("h3").textContent=s[0];p.querySelector(".file").textContent=s[1];p.querySelector("p").textContent=s[2];p.querySelector(".why").textContent="Why: "+s[3]}
+function stop(){clearInterval(timer);timer=null;$("#play").innerHTML="&#9654; Play"}
+$("#play").onclick=()=>{if(timer){stop();return}$("#play").innerHTML="&#10074;&#10074; Pause";if(cur===STEPS.length-1)show(0);
+timer=setInterval(()=>{if(cur>=STEPS.length-1){stop();return}show(cur+1)},2200)};
+show(0);
+const CH=12,K=6,TOP=4,cells=$("#cells");for(let i=0;i<CH;i++)cells.appendChild(document.createElement("i"));
+function num(){const n=+$("#nq").value;$("#nqv").textContent=n;const c=Math.min(CH,n*K);
+[...cells.children].forEach((e,i)=>{e.className=i<TOP?"k":i<c?"c":""});
+$("#ntxt").textContent=n+" quer"+(n>1?"ies":"y")+" x "+K+" chunks each = up to "+n*K+" slots, at most "+c+" unique of the CV's "+CH+" chunks. The reranker keeps "+TOP+" (bright red).";}
+$("#nq").oninput=num;num();
+const CMD={win:"git clone <your-repo-url>\ncd <your-repo-folder>\npython -m venv venv\nvenv\\Scripts\\activate\npip install -r requirements.txt\ncopy .env.example .env\npython -m src.ingest\nstreamlit run app.py",
+nix:"git clone <your-repo-url>\ncd <your-repo-folder>\npython -m venv venv\nsource venv/bin/activate\npip install -r requirements.txt\ncp .env.example .env\npython -m src.ingest\nstreamlit run app.py"};
+let os="win";function cmd(){$("#cmd").textContent=CMD[os];document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.os===os))}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{os=t.dataset.os;cmd()});cmd();
+$("#copy").onclick=async()=>{const b=$("#copy");try{await navigator.clipboard.writeText(CMD[os]);b.textContent="Copied"}catch(e){b.textContent="Select and copy"}setTimeout(()=>b.textContent="Copy",1500)};
+</script></body></html>
