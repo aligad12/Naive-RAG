@@ -9,9 +9,6 @@
   <img alt="Streamlit" src="https://img.shields.io/badge/UI-Streamlit-E10600?style=for-the-badge&labelColor=0A0A0B">
 </p>
 
-<p align="center">
-  <a href="https://aligad12.github.io/<your-repo>/"><b>▶ Open the interactive project page</b></a>
-</p>
 
 A Retrieval-Augmented Generation (RAG) app that answers questions about my CV. Answers are generated only from retrieved CV content, and when the CV doesn't contain the answer, the app says so instead of inventing one.
 
